@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["G5Y6CS2P4D.com.chrizantusnehring.Gridolu"],
+        "components": [
+          { "/": "/tiktok", "comment": "Rücksprung aus TikTok (Share Kit)" },
+          { "/": "/tiktok/*" }
+        ]
+      }
+    ]
+  }
+}
