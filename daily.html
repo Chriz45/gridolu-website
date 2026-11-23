@@ -58,6 +58,21 @@
     color:var(--ink); background:linear-gradient(135deg,#ffd76a,#ffb13d); text-align:center; text-decoration:none; cursor:pointer; }
   .btn.alt { background:rgba(255,255,255,.1); color:#fff; border:1px solid var(--line); }
   .hint { font-size:.8rem; color:var(--soft); text-align:center; margin:0; }
+  .fx { position:fixed; pointer-events:none; z-index:25; left:0; top:0; border-radius:28%; will-change:transform,opacity; }
+  @keyframes fly { to { transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot)) scale(.2); opacity:0; } }
+  #board.shake { animation:shake .32s ease-out; }
+  @keyframes shake { 0%,100%{transform:none} 20%{transform:translate(-6px,2px)} 40%{transform:translate(5px,-3px)} 60%{transform:translate(-4px,1px)} 80%{transform:translate(3px,0)} }
+  #board.flash::after { content:""; position:absolute; inset:0; border-radius:20px; background:radial-gradient(circle, rgba(255,215,106,.45), transparent 70%); animation:fade .5s forwards; pointer-events:none; }
+  @keyframes fade { to { opacity:0; } }
+  #ella { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.6); opacity:0; pointer-events:none; z-index:5;
+    display:flex; align-items:center; gap:8px; background:#fff; color:var(--ink); font-weight:900; font-size:1.25rem; padding:10px 16px 10px 10px;
+    border-radius:999px; box-shadow:0 10px 30px rgba(0,0,0,.35); white-space:nowrap; transition:transform .25s cubic-bezier(.3,1.6,.5,1), opacity .2s; }
+  #ella.on { transform:translate(-50%,-50%) scale(1); opacity:1; }
+  #ella .owl { font-size:1.6rem; }
+  #pts { position:absolute; left:50%; top:62%; transform:translate(-50%,0); font-weight:900; font-size:1.6rem; color:var(--sun);
+    text-shadow:0 2px 0 rgba(0,0,0,.4); opacity:0; pointer-events:none; z-index:5; }
+  #pts.on { animation:rise .9s ease-out; }
+  @keyframes rise { 0%{opacity:0; transform:translate(-50%,10px) scale(.8)} 20%{opacity:1; transform:translate(-50%,0) scale(1.1)} 100%{opacity:0; transform:translate(-50%,-40px) scale(1)} }
   #toast { position:fixed; left:50%; top:22%; transform:translateX(-50%); background:var(--sun); color:var(--ink);
     font-weight:800; padding:8px 16px; border-radius:999px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; }
   #over { position:fixed; inset:0; background:rgba(8,6,24,.82); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
@@ -91,7 +106,7 @@
     <div class="stat"><b id="lines">0</b><span id="lLines">Lines</span></div>
     <div class="stat"><b id="best">×0</b><span id="lCombo">Best combo</span></div>
   </div>
-  <div id="board" aria-label="Board"></div>
+  <div id="board" aria-label="Board"><div id="ella"><span class="owl">🦉</span><span id="ellaTxt"></span></div><div id="pts"></div></div>
   <div id="tray"></div>
   <p class="hint" id="hint"></p>
   <a class="btn alt" id="getApp" href="https://apps.apple.com/app/apple-store/id6827134157?pt=129517394&ct=web-daily&mt=8"></a>
@@ -199,6 +214,7 @@ function unlockAudio() {
   master = AC.createGain(); master.gain.value = soundOn ? 1 : 0; master.connect(AC.destination);
   SFX.concat(["groove"]).forEach(n => fetch("sounds/" + n + (n === "groove" ? ".wav" : ".mp3")).then(r => r.arrayBuffer())
     .then(a => AC.decodeAudioData(a)).then(b => { BUF[n] = b; if (n === "groove" && musicOn) startMusic(); }).catch(() => {}));
+  setTimeout(preloadElla, 600);
 }
 function sfx(name, vol = 1) {
   if (!AC || !soundOn || !BUF[name]) return;
@@ -211,6 +227,44 @@ function startMusic() {
 }
 function stopMusic() { if (music) { try { music.stop(); } catch(e) {} music = null; } }
 document.addEventListener("pointerdown", unlockAudio, { once:true });
+
+// ---------- Ella (Stimme & Sprüche) und Effekte ----------
+const ELLA_T = {"de": {"first": "Guter Start!", "first3": "Los geht’s!", "super": "Super!", "toll": "Toll!", "prima": "Prima!", "bravo": "Bravo!", "genial": "Genial!", "fantastisch": "Fantastisch!", "hammer": "Der Hammer!", "jippie": "Jippie!", "gridolu": "Gridoluuu!", "fever": "Jetzt wird’s heiß!", "fever2": "Alles brennt!", "allclear": "Unglaublich – alles leer!", "allclear2": "Blitzblank!", "courage2": "Mutig, mutig!"}, "en": {"first": "Great start!", "first3": "Here we go!", "super": "Super!", "toll": "Great!", "prima": "Nice!", "bravo": "Bravo!", "genial": "Brilliant!", "fantastisch": "Fantastic!", "hammer": "Smashing!", "jippie": "Yippee!", "gridolu": "Gridoluuu!", "fever": "Things are heating up!", "fever2": "Everything's on fire!", "allclear": "Incredible – all clear!", "allclear2": "Squeaky clean!", "courage2": "So brave!"}, "es": {"first": "¡Gran comienzo!", "first3": "¡Allá vamos!", "super": "¡Súper!", "toll": "¡Genial!", "prima": "¡Muy bien!", "bravo": "¡Bravo!", "genial": "¡Brillante!", "fantastisch": "¡Fantástico!", "hammer": "¡Tremendo!", "jippie": "¡Yujuuu!", "gridolu": "¡Gridoluuu!", "fever": "¡Esto se calienta!", "fever2": "¡Todo está en llamas!", "allclear": "¡Increíble, todo limpio!", "allclear2": "¡Reluciente!", "courage2": "¡Qué valientes!"}, "fr": {"first": "Super départ !", "first3": "C'est parti !", "super": "Super !", "toll": "Génial !", "prima": "Joli !", "bravo": "Bravo !", "genial": "Brillant !", "fantastisch": "Fantastique !", "hammer": "Énorme !", "jippie": "Hourra !", "gridolu": "Gridoluuu !", "fever": "Ça chauffe !", "fever2": "Tout s'embrase !", "allclear": "Incroyable, tout est vide !", "allclear2": "Tout propre !", "courage2": "Quel courage !"}, "it": {"first": "Ottimo inizio!", "first3": "Si comincia!", "super": "Super!", "toll": "Grande!", "prima": "Bene così!", "bravo": "Bravo!", "genial": "Geniale!", "fantastisch": "Strepitoso!", "hammer": "Strepitoso!", "jippie": "Urrà!", "gridolu": "Gridoluuu!", "fever": "Si scalda l'aria!", "fever2": "Tutto va a fuoco!", "allclear": "Incredibile, tutto vuoto!", "allclear2": "Pulito come uno specchio!", "courage2": "Che coraggio!"}, "ja": {"first": "いいスタート！", "first3": "さあ、はじめよう！", "super": "すごい！", "toll": "いいね！", "prima": "ナイス！", "bravo": "ブラボー！", "genial": "天才！", "fantastisch": "ファンタスティック！", "hammer": "ばっちり！", "jippie": "わーい！", "gridolu": "グリドルーー！", "fever": "盛り上がってきた！", "fever2": "ぜんぶ燃えてる！", "allclear": "信じられない、全部消えた！", "allclear2": "ピッカピカ！", "courage2": "勇気があるね！"}, "ko": {"first": "멋진 출발이에요!", "first3": "자, 시작해요!", "super": "최고!", "toll": "멋져요!", "prima": "좋아요!", "bravo": "브라보!", "genial": "천재예요!", "fantastisch": "환상적이야!", "hammer": "끝내줘요!", "jippie": "신난다!", "gridolu": "그리돌루우!", "fever": "점점 뜨거워져요!", "fever2": "모든 게 불타올라요!", "allclear": "믿기지 않아요, 싹 비웠어요!", "allclear2": "반짝반짝 깨끗해요!", "courage2": "용감해요!"}, "pt": {"first": "Que belo começo!", "first3": "Vamos lá!", "super": "Super!", "toll": "Ótimo!", "prima": "Boa!", "bravo": "Bravo!", "genial": "Genial!", "fantastisch": "Fantástico!", "hammer": "Arrasou!", "jippie": "Iupiii!", "gridolu": "Gridoluuu!", "fever": "Está esquentando!", "fever2": "Tudo pegando fogo!", "allclear": "Incrível – tudo limpo!", "allclear2": "Brilhando de limpo!", "courage2": "Que coragem!"}};
+const ELLA_L = T[langCode] ? langCode : "en";
+let lastElla = 0;
+function ella(ids, force) {
+  const nowT = performance.now(); if (!force && nowT - lastElla < 1600) return; lastElla = nowT;
+  const id = ids[Math.floor(Math.random() * ids.length)], txt = ELLA_T[ELLA_L][id];
+  $("ellaTxt").textContent = txt; const el = $("ella"); el.classList.add("on"); clearTimeout(ella.t); ella.t = setTimeout(() => el.classList.remove("on"), 1300);
+  if (!AC || !soundOn) return;
+  const key = "ella_" + id;
+  const play = () => { const src = AC.createBufferSource(), g = AC.createGain(); g.gain.value = 1.1; src.buffer = BUF[key]; src.connect(g); g.connect(master); src.start(AC.currentTime + .05); };
+  if (BUF[key]) play(); else fetch("ella/" + id + "_" + ELLA_L + ".mp3").then(r => r.arrayBuffer()).then(a => AC.decodeAudioData(a)).then(b => { BUF[key] = b; if (performance.now() - nowT < 900) play(); }).catch(() => {});
+}
+function preloadElla() {
+  if (!AC) return; Object.keys(ELLA_T[ELLA_L]).forEach(id => { const key = "ella_" + id; if (!BUF[key]) fetch("ella/" + id + "_" + ELLA_L + ".mp3").then(r => r.arrayBuffer()).then(a => AC.decodeAudioData(a)).then(b => BUF[key] = b).catch(() => {}); });
+}
+function particles(k, color, n) {
+  const r = cellEls[k].getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement("div"), sz = r.width * (.22 + Math.random() * .2), a = Math.random() * 6.283, dist = r.width * (1 + Math.random() * 1.6);
+    d.className = "fx"; d.style.width = d.style.height = sz + "px"; d.style.background = color;
+    d.style.transform = "translate3d(" + (cx - sz/2) + "px," + (cy - sz/2) + "px,0)";
+    d.style.setProperty("--dx", (cx - sz/2 + Math.cos(a) * dist) + "px"); d.style.setProperty("--dy", (cy - sz/2 + Math.sin(a) * dist + r.width) + "px");
+    d.style.setProperty("--rot", (Math.random() * 360 - 180) + "deg"); d.style.animation = "fly " + (.55 + Math.random() * .35) + "s cubic-bezier(.2,.7,.4,1) forwards";
+    document.body.appendChild(d); setTimeout(() => d.remove(), 1000);
+  }
+}
+function celebrate(hit, colors, n, pts) {
+  hit.forEach(k => particles(k, colors[k], n >= 2 ? 3 : 2));
+  if (n >= 2 || combo >= 2) { boardEl.classList.remove("shake","flash"); void boardEl.offsetWidth; boardEl.classList.add("shake","flash"); }
+  const pe = $("pts"); pe.textContent = "+" + pts + (combo >= 2 ? "  ×" + combo : ""); pe.classList.remove("on"); void pe.offsetWidth; pe.classList.add("on");
+  if (grid.every(row => row.every(v => !v))) ella(["allclear","allclear2"], true);
+  else if (combo >= 3) ella(["fever","fever2","gridolu"], true);
+  else if (n >= 2) ella(["fantastisch","hammer","jippie","gridolu"], true);
+  else if (lines === n) ella(["first","first3"], true);
+  else if (Math.random() < .55) ella(["super","toll","prima","bravo","genial"]);
+}
 
 // ---------- Aufbau ----------
 const boardEl = document.getElementById("board"), trayEl = document.getElementById("tray");
@@ -260,10 +314,10 @@ function place(i, r0, c0) {
     const pts = n * 10 * n * combo; score += pts; sfx("clear" + Math.min(6, combo), .9);
     setTimeout(() => { if (grid.every(row => row.every(v => !v))) sfx("allclear", 1); }, 50);
     const hit = new Set(); fullR.forEach(r => { for (let c = 0; c < N; c++) hit.add(r*N+c); }); fullC.forEach(c => { for (let r = 0; r < N; r++) hit.add(r*N+c); });
-    hit.forEach(k => { const el = cellEls[k]; el.innerHTML = jellyHTML(grid[Math.floor(k/N)][k%N]); el.classList.add("clear"); });
+    const colors = {}; hit.forEach(k => { const v = grid[Math.floor(k/N)][k%N]; colors[k] = v; const el = cellEls[k]; el.innerHTML = jellyHTML(v); el.classList.add("clear"); });
     hit.forEach(k => grid[Math.floor(k/N)][k%N] = null);
+    celebrate(hit, colors, n, pts);
     setTimeout(() => { hit.forEach(k => cellEls[k].classList.remove("clear")); render(); }, 360);
-    toast((n >= 2 ? n + "× " : "") + (combo >= 2 ? "Combo ×" + combo + "  " : "") + "+" + pts);
     if (navigator.vibrate) try { navigator.vibrate(n >= 2 ? [20,40,30] : 18); } catch(e) {}
   } else combo = 0;
   refill(); render(); save();
@@ -338,7 +392,7 @@ function shareText() {
     "\n\n" + grid8 + "\n" + L.beat + "\nhttps://gridolu.com/daily";
 }
 function finish() {
-  over = true; save(); sfx("gameover", .8); stopMusic();
+  over = true; save(); sfx("gameover", .8); stopMusic(); setTimeout(() => ella(["courage2"], true), 400);
   $("oTitle").textContent = store.get("gd-" + dayKey)?.replay ? L.done : L.over;
   $("oScore").textContent = score.toLocaleString();
   $("share").textContent = shareText(); $("shareBtn").textContent = "📤 " + L.share; $("copyBtn").textContent = "📋 " + L.copy;
