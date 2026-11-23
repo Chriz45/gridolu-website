@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Gridolu Daily – free block puzzle in your browser</title>
+<meta name="description" content="One block puzzle a day, the same pieces for everyone. Play in your browser, share your score – and get the full Gridolu game free on the App Store.">
+<meta name="apple-itunes-app" content="app-id=6827134157">
+<meta property="og:title" content="Gridolu Daily – can you beat my score?">
+<meta property="og:description" content="One block puzzle a day, the same pieces for everyone. Play now in your browser.">
+<meta property="og:image" content="https://gridolu.com/presse/gridolu-daily.jpg">
+<meta property="og:url" content="https://gridolu.com/daily">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+  :root { color-scheme: dark; --ink:#1b1340; --bg1:#2b2260; --bg2:#0d0b1f; --card:rgba(255,255,255,.06);
+    --line:rgba(255,255,255,.12); --soft:rgba(255,255,255,.7); --sun:#ffc83d; --coral:#ff6b4a; --mint:#3dd6a3; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#fff;
+    background:radial-gradient(circle at 30% 0%, var(--bg1), var(--bg2) 70%) fixed; overscroll-behavior:none;
+    padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
+  .wrap { max-width:440px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; align-items:center; gap:10px; }
+  header img { width:40px; height:40px; border-radius:10px; }
+  header .t { flex:1; min-width:0; }
+  header h1 { font-size:1.15rem; margin:0; letter-spacing:.2px; }
+  header .sub { font-size:.8rem; color:var(--soft); }
+  .stats { display:flex; gap:8px; }
+  .stat { flex:1; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px 10px; text-align:center; }
+  .stat b { display:block; font-size:1.35rem; font-variant-numeric:tabular-nums; }
+  .stat span { font-size:.7rem; color:var(--soft); text-transform:uppercase; letter-spacing:.8px; }
+  #board { position:relative; display:grid; grid-template-columns:repeat(8,1fr); gap:3px; padding:8px; aspect-ratio:1;
+    background:rgba(20,14,52,.85); border:1px solid var(--line); border-radius:20px; touch-action:none; }
+  .cell { border-radius:22%; background:rgba(255,255,255,.06); position:relative; }
+  .cell.ok { background:rgba(255,255,255,.28); }
+  .cell.bad { background:rgba(255,107,74,.35); }
+  .cell.clear { animation:pop .35s ease-out forwards; }
+  @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(0);opacity:0} }
+  .j { position:absolute; inset:0; border-radius:22%; background:var(--c);
+    box-shadow:inset 0 -4px 0 rgba(0,0,0,.18), inset 0 3px 0 rgba(255,255,255,.35); }
+  .j::before, .j::after { content:""; position:absolute; top:34%; width:22%; height:22%; border-radius:50%;
+    background:radial-gradient(circle at 50% 55%, var(--ink) 0 38%, #fff 40%); }
+  .j::before { left:22%; } .j::after { right:22%; }
+  .j i { position:absolute; left:38%; right:38%; top:62%; height:12%; border-radius:0 0 999px 999px; background:var(--ink); }
+  #tray { display:flex; justify-content:space-around; align-items:center; min-height:120px; touch-action:none;
+    background:var(--card); border:1px solid var(--line); border-radius:20px; padding:10px; }
+  .piece { display:grid; gap:2px; padding:6px; border-radius:12px; cursor:grab; touch-action:none; }
+  .piece.sel { background:rgba(255,200,61,.18); outline:2px solid var(--sun); }
+  .piece.dead { opacity:.3; }
+  .piece .pc { width:var(--s); height:var(--s); position:relative; }
+  #ghost { position:fixed; pointer-events:none; z-index:20; display:grid; gap:3px; opacity:.92; }
+  #ghost .pc { position:relative; }
+  .btn { display:block; width:100%; border:0; border-radius:999px; padding:15px; font:700 1.05rem inherit; font-family:inherit;
+    color:var(--ink); background:linear-gradient(135deg,#ffd76a,#ffb13d); text-align:center; text-decoration:none; cursor:pointer; }
+  .btn.alt { background:rgba(255,255,255,.1); color:#fff; border:1px solid var(--line); }
+  .hint { font-size:.8rem; color:var(--soft); text-align:center; margin:0; }
+  #toast { position:fixed; left:50%; top:22%; transform:translateX(-50%); background:var(--sun); color:var(--ink);
+    font-weight:800; padding:8px 16px; border-radius:999px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; }
+  #over { position:fixed; inset:0; background:rgba(8,6,24,.82); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:40; }
+  .panel { width:100%; max-width:400px; background:#1d1747; border:1px solid var(--line); border-radius:26px; padding:24px 20px;
+    display:flex; flex-direction:column; gap:12px; text-align:center; }
+  .panel h2 { margin:0; font-size:1.4rem; text-wrap:balance; }
+  .big { font-size:2.8rem; font-weight:900; background:linear-gradient(135deg,#ffd76a,#ff6b4a);
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-variant-numeric:tabular-nums; }
+  pre#share { white-space:pre-wrap; font:1rem/1.35 ui-monospace,Menlo,monospace; background:rgba(255,255,255,.06);
+    border-radius:14px; padding:10px; margin:0; user-select:all; text-align:left; }
+  .store { display:flex; align-items:center; gap:12px; text-align:left; background:rgba(255,255,255,.06);
+    border:1px solid var(--line); border-radius:18px; padding:12px; }
+  .store img { width:52px; height:52px; border-radius:12px; }
+  .store p { margin:0; font-size:.88rem; color:var(--soft); }
+  .store b { color:#fff; display:block; font-size:1rem; }
+  footer { font-size:.72rem; color:rgba(255,255,255,.45); text-align:center; }
+  footer a { color:rgba(255,255,255,.6); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="icon.png" alt="">
+    <div class="t"><h1 id="title">Gridolu Daily</h1><div class="sub" id="sub"></div></div>
+  </header>
+  <div class="stats">
+    <div class="stat"><b id="score">0</b><span id="lScore">Score</span></div>
+    <div class="stat"><b id="lines">0</b><span id="lLines">Lines</span></div>
+    <div class="stat"><b id="best">×0</b><span id="lCombo">Best combo</span></div>
+  </div>
+  <div id="board" aria-label="Board"></div>
+  <div id="tray"></div>
+  <p class="hint" id="hint"></p>
+  <a class="btn alt" id="getApp" href="https://apps.apple.com/app/apple-store/id6827134157?pt=129517394&ct=web-daily&mt=8"></a>
+  <footer><span id="foot"></span> · <a href="https://gridolu.com">gridolu.com</a> · <a href="privacy">Privacy</a></footer>
+</div>
+<div id="ghost" hidden></div>
+<div id="toast"></div>
+<div id="over" hidden>
+  <div class="panel">
+    <h2 id="oTitle"></h2>
+    <div class="big" id="oScore"></div>
+    <pre id="share"></pre>
+    <button class="btn" id="shareBtn"></button>
+    <div class="store">
+      <img src="icon.png" alt="">
+      <div><b>Gridolu: Block-Puzzle</b><p id="oPitch"></p></div>
+    </div>
+    <a class="btn alt" id="oApp" href="https://apps.apple.com/app/apple-store/id6827134157?pt=129517394&ct=web-daily-end&mt=8"></a>
+    <p class="hint" id="oNext"></p>
+  </div>
+</div>
+<script>
+"use strict";
+// ---------- Texte (8 Sprachen wie die App) ----------
+const T = {
+  en:{sub:"Same pieces for everyone · one try",score:"Score",lines:"Lines",combo:"Best combo",hint:"Drag a piece onto the board – or tap a piece, then a field.",
+      app:"Get the full game free on the App Store",foot:"A new puzzle every day",over:"No piece fits anymore!",done:"You already played today's puzzle",
+      share:"Share result",copied:"Copied – paste it anywhere!",pitch:"Adventure world map, runes, a jelly family, Boss of the Week and more – free.",
+      open:"Download free on the App Store",next:"New puzzle in",beat:"Can you beat it? Same pieces for everyone:",pts:"points",combos:"Best combo"},
+  de:{sub:"Gleiche Teile für alle · ein Versuch",score:"Punkte",lines:"Linien",combo:"Beste Kombo",hint:"Zieh ein Teil aufs Brett – oder tippe ein Teil und dann ein Feld.",
+      app:"Das ganze Spiel gratis im App Store",foot:"Jeden Tag ein neues Rätsel",over:"Kein Teil passt mehr!",done:"Das heutige Rätsel hast du schon gespielt",
+      share:"Ergebnis teilen",copied:"Kopiert – einfach einfügen!",pitch:"Abenteuer-Weltkarte, Runen, Jelly-Familie, Boss der Woche und mehr – gratis.",
+      open:"Gratis im App Store laden",next:"Neues Rätsel in",beat:"Schaffst du mehr? Gleiche Teile für alle:",pts:"Punkte",combos:"Beste Kombo"},
+  es:{sub:"Mismas piezas para todos · un intento",score:"Puntos",lines:"Líneas",combo:"Mejor combo",hint:"Arrastra una pieza al tablero, o toca una pieza y luego una casilla.",
+      app:"El juego completo gratis en el App Store",foot:"Un puzle nuevo cada día",over:"¡Ya no cabe ninguna pieza!",done:"Ya jugaste el puzle de hoy",
+      share:"Compartir resultado",copied:"¡Copiado! Pégalo donde quieras",pitch:"Mapa de aventuras, runas, familia jelly, jefe de la semana y más, gratis.",
+      open:"Descargar gratis en el App Store",next:"Nuevo puzle en",beat:"¿Puedes superarlo? Mismas piezas para todos:",pts:"puntos",combos:"Mejor combo"},
+  pt:{sub:"Mesmas peças para todos · uma tentativa",score:"Pontos",lines:"Linhas",combo:"Melhor combo",hint:"Arraste uma peça para o tabuleiro, ou toque numa peça e depois num campo.",
+      app:"O jogo completo grátis na App Store",foot:"Um quebra-cabeça novo todo dia",over:"Nenhuma peça cabe mais!",done:"Você já jogou o desafio de hoje",
+      share:"Compartilhar resultado",copied:"Copiado! Cole onde quiser",pitch:"Mapa de aventura, runas, família jelly, chefe da semana e mais, grátis.",
+      open:"Baixar grátis na App Store",next:"Novo desafio em",beat:"Consegue fazer mais? Mesmas peças para todos:",pts:"pontos",combos:"Melhor combo"},
+  fr:{sub:"Les mêmes pièces pour tous · un essai",score:"Points",lines:"Lignes",combo:"Meilleur combo",hint:"Glisse une pièce sur la grille, ou touche une pièce puis une case.",
+      app:"Le jeu complet gratuit sur l'App Store",foot:"Un nouveau puzzle chaque jour",over:"Plus aucune pièce ne rentre !",done:"Tu as déjà joué le puzzle du jour",
+      share:"Partager le résultat",copied:"Copié ! Colle-le où tu veux",pitch:"Carte d'aventure, runes, famille de jellys, boss de la semaine et plus, gratuit.",
+      open:"Télécharger gratuitement",next:"Nouveau puzzle dans",beat:"Tu peux faire mieux ? Les mêmes pièces pour tous :",pts:"points",combos:"Meilleur combo"},
+  it:{sub:"Stessi pezzi per tutti · un tentativo",score:"Punti",lines:"Linee",combo:"Combo migliore",hint:"Trascina un pezzo sulla griglia, oppure tocca un pezzo e poi una casella.",
+      app:"Il gioco completo gratis sull'App Store",foot:"Un nuovo puzzle ogni giorno",over:"Nessun pezzo entra più!",done:"Hai già giocato il puzzle di oggi",
+      share:"Condividi risultato",copied:"Copiato! Incollalo dove vuoi",pitch:"Mappa avventura, rune, famiglia di jelly, boss della settimana e altro, gratis.",
+      open:"Scarica gratis dall'App Store",next:"Nuovo puzzle tra",beat:"Riesci a fare di meglio? Stessi pezzi per tutti:",pts:"punti",combos:"Combo migliore"},
+  ja:{sub:"みんな同じピース・1回勝負",score:"スコア",lines:"ライン",combo:"最高コンボ",hint:"ピースを盤面にドラッグ、またはピースをタップしてからマスをタップ。",
+      app:"フル版はApp Storeで無料",foot:"毎日新しいパズル",over:"もう置けるピースがありません！",done:"今日のパズルはプレイ済みです",
+      share:"結果をシェア",copied:"コピーしました！貼り付けてね",pitch:"冒険マップ、ルーン、ジェリーファミリー、今週のボスなど。無料。",
+      open:"App Storeで無料ダウンロード",next:"次のパズルまで",beat:"これを超えられる？みんな同じピース：",pts:"点",combos:"最高コンボ"},
+  ko:{sub:"모두 같은 블록 · 한 번의 기회",score:"점수",lines:"줄",combo:"최고 콤보",hint:"블록을 보드로 끌어다 놓거나, 블록을 탭한 뒤 칸을 탭하세요.",
+      app:"정식 게임은 App Store에서 무료",foot:"매일 새로운 퍼즐",over:"더 이상 놓을 블록이 없어요!",done:"오늘의 퍼즐은 이미 플레이했어요",
+      share:"결과 공유",copied:"복사했어요! 붙여넣기 하세요",pitch:"모험 지도, 룬, 젤리 가족, 이번 주 보스 등 무료.",
+      open:"App Store에서 무료 다운로드",next:"새 퍼즐까지",beat:"이길 수 있어? 모두 같은 블록:",pts:"점",combos:"최고 콤보"}
+};
+const langCode = (navigator.language || "en").slice(0,2).toLowerCase();
+const L = T[langCode] || T.en;
+document.documentElement.lang = T[langCode] ? langCode : "en";
+
+// ---------- Tag & Zufall (gleich für alle: Datum im lokalen Kalender) ----------
+const now = new Date();
+const dayKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+const launch = new Date(2026, 9, 1);
+const dayNo = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - launch) / 864e5) + 1;
+function mulberry(a) { return function() { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let seed = 0; for (const ch of "gridolu-web-" + dayKey) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
+const rand = mulberry(seed);
+
+// ---------- Teile ----------
+const SHAPES = [
+  [[0,0]], [[0,0],[0,1]], [[0,0],[1,0]], [[0,0],[0,1],[0,2]], [[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[1,0],[1,1]], [[0,0],[0,1],[0,2],[0,3]], [[0,0],[1,0],[2,0],[3,0]],
+  [[0,0],[1,0],[1,1]], [[0,1],[1,0],[1,1]], [[0,0],[0,1],[1,0]], [[0,0],[0,1],[1,1]],
+  [[0,0],[1,0],[2,0],[2,1]], [[0,1],[1,1],[2,1],[2,0]], [[0,0],[0,1],[0,2],[1,0]], [[0,0],[0,1],[0,2],[1,2]],
+  [[0,0],[0,1],[1,1],[1,2]], [[0,1],[0,2],[1,0],[1,1]], [[0,0],[0,1],[0,2],[1,1]],
+  [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], [[0,0],[0,1],[0,2],[0,3],[0,4]],
+  [[0,0],[1,0],[2,0],[2,1],[2,2]]
+];
+const COLORS = ["#4c7dff","#ff6b4a","#ffc83d","#3dd6a3","#b46bff","#ff8fc7","#7cc94a","#ffa033","#36b9d6"];
+function newPiece() {
+  // Große Teile seltener.
+  let i; do { i = Math.floor(rand() * SHAPES.length); } while (SHAPES[i].length >= 5 && rand() < .55);
+  return { cells: SHAPES[i], color: COLORS[Math.floor(rand() * COLORS.length)] };
+}
+
+// ---------- Zustand ----------
+const N = 8;
+let grid = Array.from({length:N}, () => Array(N).fill(null));
+let tray = [], score = 0, lines = 0, combo = 0, bestCombo = 0, rounds = [], roundLines = 0, selected = -1, over = false;
+const store = { get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } },
+                set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} } };
+
+// ---------- Aufbau ----------
+const boardEl = document.getElementById("board"), trayEl = document.getElementById("tray");
+const cellEls = [];
+for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const d = document.createElement("div"); d.className = "cell"; boardEl.appendChild(d); cellEls.push(d); }
+const $ = id => document.getElementById(id);
+$("sub").textContent = "#" + dayNo + " · " + L.sub; $("lScore").textContent = L.score; $("lLines").textContent = L.lines;
+$("lCombo").textContent = L.combo; $("hint").textContent = L.hint; $("getApp").textContent = "📲 " + L.app; $("foot").textContent = L.foot;
+
+function jellyHTML(color) { return '<div class="j" style="--c:' + color + '"><i></i></div>'; }
+function render() {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const el = cellEls[r*N+c], v = grid[r][c];
+    el.classList.remove("ok","bad");
+    if (!el.classList.contains("clear")) el.innerHTML = v ? jellyHTML(v) : "";
+  }
+  trayEl.innerHTML = "";
+  tray.forEach((p, i) => {
+    const d = document.createElement("div"); d.className = "piece" + (p ? "" : " dead") + (i === selected ? " sel" : "");
+    if (p) {
+      const h = Math.max(...p.cells.map(x => x[0])) + 1, w = Math.max(...p.cells.map(x => x[1])) + 1;
+      const s = Math.min(26, Math.floor(96 / Math.max(h, w)));
+      d.style.gridTemplateColumns = "repeat(" + w + "," + s + "px)"; d.style.gridTemplateRows = "repeat(" + h + "," + s + "px)";
+      d.style.setProperty("--s", s + "px");
+      p.cells.forEach(([r, c]) => { const e = document.createElement("div"); e.className = "pc"; e.style.gridRow = r+1; e.style.gridColumn = c+1; e.innerHTML = jellyHTML(p.color); d.appendChild(e); });
+      if (!fitsAnywhere(p)) d.classList.add("dead");
+      d.addEventListener("pointerdown", ev => startDrag(ev, i));
+    }
+    trayEl.appendChild(d);
+  });
+  $("score").textContent = score.toLocaleString(); $("lines").textContent = lines; $("best").textContent = "×" + bestCombo;
+}
+function canPlace(p, r0, c0) { return p.cells.every(([r, c]) => { const R = r0+r, C = c0+c; return R >= 0 && R < N && C >= 0 && C < N && !grid[R][C]; }); }
+function fitsAnywhere(p) { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (canPlace(p, r, c)) return true; return false; }
+function refill() { if (tray.every(p => !p)) { tray = [newPiece(), newPiece(), newPiece()]; rounds.push(roundLines); roundLines = 0; } }
+
+function place(i, r0, c0) {
+  const p = tray[i]; if (!p || !canPlace(p, r0, c0)) return false;
+  p.cells.forEach(([r, c]) => grid[r0+r][c0+c] = p.color);
+  score += p.cells.length; tray[i] = null; selected = -1;
+  const fullR = [], fullC = [];
+  for (let r = 0; r < N; r++) if (grid[r].every(Boolean)) fullR.push(r);
+  for (let c = 0; c < N; c++) if (grid.every(row => row[c])) fullC.push(c);
+  const n = fullR.length + fullC.length;
+  if (n) {
+    combo++; bestCombo = Math.max(bestCombo, combo); lines += n; roundLines += n;
+    const pts = n * 10 * n * combo; score += pts;
+    const hit = new Set(); fullR.forEach(r => { for (let c = 0; c < N; c++) hit.add(r*N+c); }); fullC.forEach(c => { for (let r = 0; r < N; r++) hit.add(r*N+c); });
+    hit.forEach(k => { const el = cellEls[k]; el.innerHTML = jellyHTML(grid[Math.floor(k/N)][k%N]); el.classList.add("clear"); });
+    hit.forEach(k => grid[Math.floor(k/N)][k%N] = null);
+    setTimeout(() => { hit.forEach(k => cellEls[k].classList.remove("clear")); render(); }, 360);
+    toast((n >= 2 ? n + "× " : "") + (combo >= 2 ? "Combo ×" + combo + "  " : "") + "+" + pts);
+    if (navigator.vibrate) try { navigator.vibrate(n >= 2 ? [20,40,30] : 18); } catch(e) {}
+  } else combo = 0;
+  refill(); render(); save();
+  if (tray.filter(Boolean).every(q => !fitsAnywhere(q))) setTimeout(finish, n ? 500 : 250);
+  return true;
+}
+
+// ---------- Ziehen & Tippen ----------
+const ghost = $("ghost"); let drag = null;
+function cellSize() { const r = cellEls[0].getBoundingClientRect(); return r.width; }
+function startDrag(ev, i) {
+  if (over || !tray[i]) return; ev.preventDefault();
+  const p = tray[i], s = cellSize(), h = Math.max(...p.cells.map(x => x[0])) + 1, w = Math.max(...p.cells.map(x => x[1])) + 1;
+  ghost.innerHTML = ""; ghost.style.gridTemplateColumns = "repeat(" + w + "," + s + "px)"; ghost.style.gridTemplateRows = "repeat(" + h + "," + s + "px)";
+  p.cells.forEach(([r, c]) => { const e = document.createElement("div"); e.className = "pc"; e.style.gridRow = r+1; e.style.gridColumn = c+1; e.innerHTML = jellyHTML(p.color); ghost.appendChild(e); });
+  drag = { i, w, h, s, moved:false, x0:ev.clientX, y0:ev.clientY, target:null };
+  moveDrag(ev);
+  window.addEventListener("pointermove", moveDrag); window.addEventListener("pointerup", endDrag, { once:true }); window.addEventListener("pointercancel", endDrag, { once:true });
+}
+function moveDrag(ev) {
+  if (!drag) return;
+  if (Math.hypot(ev.clientX - drag.x0, ev.clientY - drag.y0) > 8) drag.moved = true;
+  if (!drag.moved) return;
+  ghost.hidden = false;
+  const gw = drag.w * (drag.s + 3), gh = drag.h * (drag.s + 3), lift = ev.pointerType === "mouse" ? 0 : 70;
+  const left = ev.clientX - gw/2, top = ev.clientY - gh/2 - lift;
+  ghost.style.left = left + "px"; ghost.style.top = top + "px";
+  const b = cellEls[0].getBoundingClientRect(), step = drag.s + 3;
+  const c0 = Math.round((left - b.left) / step), r0 = Math.round((top - b.top) / step);
+  showPreview(drag.i, r0, c0); drag.target = [r0, c0];
+}
+function endDrag() {
+  window.removeEventListener("pointermove", moveDrag); ghost.hidden = true;
+  if (!drag) return; const d = drag; drag = null;
+  if (!d.moved) { selected = selected === d.i ? -1 : d.i; render(); return; }
+  if (!(d.target && place(d.i, d.target[0], d.target[1]))) render();
+}
+function showPreview(i, r0, c0) {
+  cellEls.forEach(e => e.classList.remove("ok","bad"));
+  const p = tray[i]; if (!p) return; const ok = canPlace(p, r0, c0);
+  p.cells.forEach(([r, c]) => { const R = r0+r, C = c0+c; if (R >= 0 && R < N && C >= 0 && C < N) cellEls[R*N+C].classList.add(ok ? "ok" : "bad"); });
+}
+boardEl.addEventListener("click", ev => {
+  if (selected < 0 || over) return;
+  const k = cellEls.indexOf(ev.target.closest(".cell")); if (k < 0) return;
+  // Getippte Zelle = linke obere Ecke des Teils (passt es nicht, nächste passende Verschiebung probieren).
+  const r = Math.floor(k/N), c = k%N, p = tray[selected];
+  for (const [dr, dc] of [[0,0], ...p.cells.map(([a,b]) => [-a,-b])]) if (place(selected, r+dr, c+dc)) return;
+  toast("✕");
+});
+
+// ---------- Ende & Teilen ----------
+function emoji(n) { return n === 0 ? "⬛" : n === 1 ? "🟦" : n === 2 ? "🟩" : n <= 4 ? "🟨" : "🟥"; }
+function shareText() {
+  const rs = rounds.concat(roundLines ? [roundLines] : []).slice(0, 40).map(emoji);
+  let grid8 = ""; for (let i = 0; i < rs.length; i += 8) grid8 += rs.slice(i, i+8).join("") + "\n";
+  return "Gridolu Daily #" + dayNo + "\n⭐ " + score.toLocaleString() + " " + L.pts + (bestCombo >= 2 ? " · 🔥 " + L.combos + " ×" + bestCombo : "") +
+    "\n\n" + grid8 + "\n" + L.beat + "\nhttps://gridolu.com/daily";
+}
+function finish() {
+  over = true; save();
+  $("oTitle").textContent = store.get("gd-" + dayKey)?.replay ? L.done : L.over;
+  $("oScore").textContent = score.toLocaleString();
+  $("share").textContent = shareText(); $("shareBtn").textContent = "📤 " + L.share;
+  $("oPitch").textContent = L.pitch; $("oApp").textContent = "📲 " + L.open;
+  $("over").hidden = false; tickNext(); setInterval(tickNext, 1000);
+}
+function tickNext() {
+  const t = new Date(), mid = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1), s = Math.max(0, Math.floor((mid - t) / 1000));
+  $("oNext").textContent = L.next + " " + String(Math.floor(s/3600)).padStart(2,"0") + ":" + String(Math.floor(s/60)%60).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+}
+$("shareBtn").addEventListener("click", async () => {
+  const text = shareText();
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch(e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast(L.copied); }
+  catch(e) { const r = document.createRange(); r.selectNodeContents($("share")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+});
+let toastTimer; function toast(msg) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 900); }
+
+// ---------- Speichern: ein Versuch pro Tag ----------
+function save() { store.set("gd-" + dayKey, { grid, tray, score, lines, combo, bestCombo, rounds, roundLines, over, seedState: null, placed: placedCount() }); }
+function placedCount() { return 0; }
+const saved = store.get("gd-" + dayKey);
+if (saved) {
+  ({ grid, tray, score, lines, combo, bestCombo, rounds, roundLines } = saved);
+  // Zufall auf den gleichen Stand bringen: so viele Teile ziehen wie schon gezogen.
+  const drawn = 3 * (rounds.length + 1); for (let k = 0; k < drawn; k++) newPiece();
+  if (saved.over) { saved.replay = true; store.set("gd-" + dayKey, saved); render(); finish(); }
+}
+if (!saved) { tray = [newPiece(), newPiece(), newPiece()]; }
+if (!over) render();
+</script>
+</body>
+</html>
