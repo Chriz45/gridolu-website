@@ -102,6 +102,7 @@
     <div class="big" id="oScore"></div>
     <pre id="share"></pre>
     <button class="btn" id="shareBtn"></button>
+    <div style="display:flex;gap:8px"><a class="btn alt" id="waBtn" target="_blank" rel="noopener">WhatsApp</a><button class="btn alt" id="copyBtn"></button></div>
     <div class="store">
       <img src="icon.png" alt="">
       <div><b>Gridolu: Block-Puzzle</b><p id="oPitch"></p></div>
@@ -114,35 +115,35 @@
 "use strict";
 // ---------- Texte (8 Sprachen wie die App) ----------
 const T = {
-  en:{sub:"Same pieces for everyone · one try",score:"Score",lines:"Lines",combo:"Best combo",hint:"Drag a piece onto the board – or tap a piece, then a field.",
+  en:{copy:"Copy",manual:"Press ⌘C / Ctrl+C to copy",sub:"Same pieces for everyone · one try",score:"Score",lines:"Lines",combo:"Best combo",hint:"Drag a piece onto the board – or tap a piece, then a field.",
       app:"Get the full game free on the App Store",foot:"A new puzzle every day",over:"No piece fits anymore!",done:"You already played today's puzzle",
       share:"Share result",copied:"Copied – paste it anywhere!",pitch:"Adventure world map, runes, a jelly family, Boss of the Week and more – free.",
       open:"Download free on the App Store",next:"New puzzle in",beat:"Can you beat it? Same pieces for everyone:",pts:"points",combos:"Best combo"},
-  de:{sub:"Gleiche Teile für alle · ein Versuch",score:"Punkte",lines:"Linien",combo:"Beste Kombo",hint:"Zieh ein Teil aufs Brett – oder tippe ein Teil und dann ein Feld.",
+  de:{copy:"Kopieren",manual:"Mit ⌘C bzw. Strg+C kopieren",sub:"Gleiche Teile für alle · ein Versuch",score:"Punkte",lines:"Linien",combo:"Beste Kombo",hint:"Zieh ein Teil aufs Brett – oder tippe ein Teil und dann ein Feld.",
       app:"Das ganze Spiel gratis im App Store",foot:"Jeden Tag ein neues Rätsel",over:"Kein Teil passt mehr!",done:"Das heutige Rätsel hast du schon gespielt",
       share:"Ergebnis teilen",copied:"Kopiert – einfach einfügen!",pitch:"Abenteuer-Weltkarte, Runen, Jelly-Familie, Boss der Woche und mehr – gratis.",
       open:"Gratis im App Store laden",next:"Neues Rätsel in",beat:"Schaffst du mehr? Gleiche Teile für alle:",pts:"Punkte",combos:"Beste Kombo"},
-  es:{sub:"Mismas piezas para todos · un intento",score:"Puntos",lines:"Líneas",combo:"Mejor combo",hint:"Arrastra una pieza al tablero, o toca una pieza y luego una casilla.",
+  es:{copy:"Copiar",manual:"Pulsa ⌘C / Ctrl+C para copiar",sub:"Mismas piezas para todos · un intento",score:"Puntos",lines:"Líneas",combo:"Mejor combo",hint:"Arrastra una pieza al tablero, o toca una pieza y luego una casilla.",
       app:"El juego completo gratis en el App Store",foot:"Un puzle nuevo cada día",over:"¡Ya no cabe ninguna pieza!",done:"Ya jugaste el puzle de hoy",
       share:"Compartir resultado",copied:"¡Copiado! Pégalo donde quieras",pitch:"Mapa de aventuras, runas, familia jelly, jefe de la semana y más, gratis.",
       open:"Descargar gratis en el App Store",next:"Nuevo puzle en",beat:"¿Puedes superarlo? Mismas piezas para todos:",pts:"puntos",combos:"Mejor combo"},
-  pt:{sub:"Mesmas peças para todos · uma tentativa",score:"Pontos",lines:"Linhas",combo:"Melhor combo",hint:"Arraste uma peça para o tabuleiro, ou toque numa peça e depois num campo.",
+  pt:{copy:"Copiar",manual:"Pressione ⌘C / Ctrl+C para copiar",sub:"Mesmas peças para todos · uma tentativa",score:"Pontos",lines:"Linhas",combo:"Melhor combo",hint:"Arraste uma peça para o tabuleiro, ou toque numa peça e depois num campo.",
       app:"O jogo completo grátis na App Store",foot:"Um quebra-cabeça novo todo dia",over:"Nenhuma peça cabe mais!",done:"Você já jogou o desafio de hoje",
       share:"Compartilhar resultado",copied:"Copiado! Cole onde quiser",pitch:"Mapa de aventura, runas, família jelly, chefe da semana e mais, grátis.",
       open:"Baixar grátis na App Store",next:"Novo desafio em",beat:"Consegue fazer mais? Mesmas peças para todos:",pts:"pontos",combos:"Melhor combo"},
-  fr:{sub:"Les mêmes pièces pour tous · un essai",score:"Points",lines:"Lignes",combo:"Meilleur combo",hint:"Glisse une pièce sur la grille, ou touche une pièce puis une case.",
+  fr:{copy:"Copier",manual:"Appuie sur ⌘C / Ctrl+C pour copier",sub:"Les mêmes pièces pour tous · un essai",score:"Points",lines:"Lignes",combo:"Meilleur combo",hint:"Glisse une pièce sur la grille, ou touche une pièce puis une case.",
       app:"Le jeu complet gratuit sur l'App Store",foot:"Un nouveau puzzle chaque jour",over:"Plus aucune pièce ne rentre !",done:"Tu as déjà joué le puzzle du jour",
       share:"Partager le résultat",copied:"Copié ! Colle-le où tu veux",pitch:"Carte d'aventure, runes, famille de jellys, boss de la semaine et plus, gratuit.",
       open:"Télécharger gratuitement",next:"Nouveau puzzle dans",beat:"Tu peux faire mieux ? Les mêmes pièces pour tous :",pts:"points",combos:"Meilleur combo"},
-  it:{sub:"Stessi pezzi per tutti · un tentativo",score:"Punti",lines:"Linee",combo:"Combo migliore",hint:"Trascina un pezzo sulla griglia, oppure tocca un pezzo e poi una casella.",
+  it:{copy:"Copia",manual:"Premi ⌘C / Ctrl+C per copiare",sub:"Stessi pezzi per tutti · un tentativo",score:"Punti",lines:"Linee",combo:"Combo migliore",hint:"Trascina un pezzo sulla griglia, oppure tocca un pezzo e poi una casella.",
       app:"Il gioco completo gratis sull'App Store",foot:"Un nuovo puzzle ogni giorno",over:"Nessun pezzo entra più!",done:"Hai già giocato il puzzle di oggi",
       share:"Condividi risultato",copied:"Copiato! Incollalo dove vuoi",pitch:"Mappa avventura, rune, famiglia di jelly, boss della settimana e altro, gratis.",
       open:"Scarica gratis dall'App Store",next:"Nuovo puzzle tra",beat:"Riesci a fare di meglio? Stessi pezzi per tutti:",pts:"punti",combos:"Combo migliore"},
-  ja:{sub:"みんな同じピース・1回勝負",score:"スコア",lines:"ライン",combo:"最高コンボ",hint:"ピースを盤面にドラッグ、またはピースをタップしてからマスをタップ。",
+  ja:{copy:"コピー",manual:"⌘C / Ctrl+C でコピー",sub:"みんな同じピース・1回勝負",score:"スコア",lines:"ライン",combo:"最高コンボ",hint:"ピースを盤面にドラッグ、またはピースをタップしてからマスをタップ。",
       app:"フル版はApp Storeで無料",foot:"毎日新しいパズル",over:"もう置けるピースがありません！",done:"今日のパズルはプレイ済みです",
       share:"結果をシェア",copied:"コピーしました！貼り付けてね",pitch:"冒険マップ、ルーン、ジェリーファミリー、今週のボスなど。無料。",
       open:"App Storeで無料ダウンロード",next:"次のパズルまで",beat:"これを超えられる？みんな同じピース：",pts:"点",combos:"最高コンボ"},
-  ko:{sub:"모두 같은 블록 · 한 번의 기회",score:"점수",lines:"줄",combo:"최고 콤보",hint:"블록을 보드로 끌어다 놓거나, 블록을 탭한 뒤 칸을 탭하세요.",
+  ko:{copy:"복사",manual:"⌘C / Ctrl+C로 복사",sub:"모두 같은 블록 · 한 번의 기회",score:"점수",lines:"줄",combo:"최고 콤보",hint:"블록을 보드로 끌어다 놓거나, 블록을 탭한 뒤 칸을 탭하세요.",
       app:"정식 게임은 App Store에서 무료",foot:"매일 새로운 퍼즐",over:"더 이상 놓을 블록이 없어요!",done:"오늘의 퍼즐은 이미 플레이했어요",
       share:"결과 공유",copied:"복사했어요! 붙여넣기 하세요",pitch:"모험 지도, 룬, 젤리 가족, 이번 주 보스 등 무료.",
       open:"App Store에서 무료 다운로드",next:"새 퍼즐까지",beat:"이길 수 있어? 모두 같은 블록:",pts:"점",combos:"최고 콤보"}
@@ -299,7 +300,8 @@ function finish() {
   over = true; save();
   $("oTitle").textContent = store.get("gd-" + dayKey)?.replay ? L.done : L.over;
   $("oScore").textContent = score.toLocaleString();
-  $("share").textContent = shareText(); $("shareBtn").textContent = "📤 " + L.share;
+  $("share").textContent = shareText(); $("shareBtn").textContent = "📤 " + L.share; $("copyBtn").textContent = "📋 " + L.copy;
+  $("waBtn").href = "https://wa.me/?text=" + encodeURIComponent(shareText());
   $("oPitch").textContent = L.pitch; $("oApp").textContent = "📲 " + L.open;
   $("over").hidden = false; tickNext(); setInterval(tickNext, 1000);
 }
@@ -307,12 +309,20 @@ function tickNext() {
   const t = new Date(), mid = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1), s = Math.max(0, Math.floor((mid - t) / 1000));
   $("oNext").textContent = L.next + " " + String(Math.floor(s/3600)).padStart(2,"0") + ":" + String(Math.floor(s/60)%60).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
 }
+function copyText(text) {
+  // 1. moderne Zwischenablage, 2. altes execCommand über ein verstecktes Textfeld, 3. Text markieren.
+  const fallback = () => { const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false; try { ok = document.execCommand("copy"); } catch(e) {} ta.remove();
+    if (ok) toast(L.copied); else { const r = document.createRange(); r.selectNodeContents($("share")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(L.manual); } };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => toast(L.copied), fallback); else fallback();
+}
 $("shareBtn").addEventListener("click", async () => {
   const text = shareText();
-  try { if (navigator.share) { await navigator.share({ text }); return; } } catch(e) { if (e && e.name === "AbortError") return; }
-  try { await navigator.clipboard.writeText(text); toast(L.copied); }
-  catch(e) { const r = document.createRange(); r.selectNodeContents($("share")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  if (navigator.share) { try { await navigator.share({ text }); return; } catch(e) { if (e && e.name === "AbortError") return; } }
+  copyText(text);
 });
+$("copyBtn").addEventListener("click", () => copyText(shareText()));
 let toastTimer; function toast(msg) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 900); }
 
 // ---------- Speichern: ein Versuch pro Tag ----------
