@@ -25,6 +25,8 @@
   header { display:flex; align-items:center; gap:10px; }
   header img { width:40px; height:40px; border-radius:10px; }
   header .t { flex:1; min-width:0; }
+  .ib { width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:#fff; font-size:1.1rem; cursor:pointer; }
+  .ib.off { opacity:.4; }
   header h1 { font-size:1.15rem; margin:0; letter-spacing:.2px; }
   header .sub { font-size:.8rem; color:var(--soft); }
   .stats { display:flex; gap:8px; }
@@ -50,7 +52,7 @@
   .piece.sel { background:rgba(255,200,61,.18); outline:2px solid var(--sun); }
   .piece.dead { opacity:.3; }
   .piece .pc { width:var(--s); height:var(--s); position:relative; }
-  #ghost { position:fixed; pointer-events:none; z-index:20; display:grid; gap:3px; opacity:.92; }
+  #ghost { position:fixed; left:0; top:0; pointer-events:none; z-index:20; display:grid; gap:3px; opacity:.95; will-change:transform; filter:drop-shadow(0 10px 12px rgba(0,0,0,.35)); }
   #ghost .pc { position:relative; }
   .btn { display:block; width:100%; border:0; border-radius:999px; padding:15px; font:700 1.05rem inherit; font-family:inherit;
     color:var(--ink); background:linear-gradient(135deg,#ffd76a,#ffb13d); text-align:center; text-decoration:none; cursor:pointer; }
@@ -82,6 +84,7 @@
   <header>
     <img src="icon.png" alt="">
     <div class="t"><h1 id="title">Gridolu Daily</h1><div class="sub" id="sub"></div></div>
+    <button class="ib" id="musicBtn" aria-label="Music">🎵</button><button class="ib" id="soundBtn" aria-label="Sound">🔊</button>
   </header>
   <div class="stats">
     <div class="stat"><b id="score">0</b><span id="lScore">Score</span></div>
@@ -186,6 +189,29 @@ let tray = [], score = 0, lines = 0, combo = 0, bestCombo = 0, rounds = [], roun
 const store = { get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } },
                 set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} } };
 
+// ---------- Sound (Gridolu-Klänge, Web Audio) ----------
+let AC = null, master = null, music = null; const BUF = {};
+let soundOn = store.get("gd-sound") !== false, musicOn = store.get("gd-music") === true;
+const SFX = ["pickup","place","invalid","clear1","clear2","clear3","clear4","clear5","clear6","allclear","gameover"];
+function unlockAudio() {
+  if (AC) { if (AC.state === "suspended") AC.resume(); return; }
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; }
+  master = AC.createGain(); master.gain.value = soundOn ? 1 : 0; master.connect(AC.destination);
+  SFX.concat(["groove"]).forEach(n => fetch("sounds/" + n + (n === "groove" ? ".wav" : ".mp3")).then(r => r.arrayBuffer())
+    .then(a => AC.decodeAudioData(a)).then(b => { BUF[n] = b; if (n === "groove" && musicOn) startMusic(); }).catch(() => {}));
+}
+function sfx(name, vol = 1) {
+  if (!AC || !soundOn || !BUF[name]) return;
+  const src = AC.createBufferSource(), g = AC.createGain(); g.gain.value = vol; src.buffer = BUF[name]; src.connect(g); g.connect(master); src.start();
+}
+function startMusic() {
+  if (!AC || !BUF.groove || music) return;
+  music = AC.createBufferSource(); const g = AC.createGain(); g.gain.value = .22; music.buffer = BUF.groove; music.loop = true;
+  music.connect(g); g.connect(master); music.start();
+}
+function stopMusic() { if (music) { try { music.stop(); } catch(e) {} music = null; } }
+document.addEventListener("pointerdown", unlockAudio, { once:true });
+
 // ---------- Aufbau ----------
 const boardEl = document.getElementById("board"), trayEl = document.getElementById("tray");
 const cellEls = [];
@@ -224,14 +250,15 @@ function refill() { if (tray.every(p => !p)) { tray = [newPiece(), newPiece(), n
 function place(i, r0, c0) {
   const p = tray[i]; if (!p || !canPlace(p, r0, c0)) return false;
   p.cells.forEach(([r, c]) => grid[r0+r][c0+c] = p.color);
-  score += p.cells.length; tray[i] = null; selected = -1;
+  score += p.cells.length; tray[i] = null; selected = -1; sfx("place", .8);
   const fullR = [], fullC = [];
   for (let r = 0; r < N; r++) if (grid[r].every(Boolean)) fullR.push(r);
   for (let c = 0; c < N; c++) if (grid.every(row => row[c])) fullC.push(c);
   const n = fullR.length + fullC.length;
   if (n) {
     combo++; bestCombo = Math.max(bestCombo, combo); lines += n; roundLines += n;
-    const pts = n * 10 * n * combo; score += pts;
+    const pts = n * 10 * n * combo; score += pts; sfx("clear" + Math.min(6, combo), .9);
+    setTimeout(() => { if (grid.every(row => row.every(v => !v))) sfx("allclear", 1); }, 50);
     const hit = new Set(); fullR.forEach(r => { for (let c = 0; c < N; c++) hit.add(r*N+c); }); fullC.forEach(c => { for (let r = 0; r < N; r++) hit.add(r*N+c); });
     hit.forEach(k => { const el = cellEls[k]; el.innerHTML = jellyHTML(grid[Math.floor(k/N)][k%N]); el.classList.add("clear"); });
     hit.forEach(k => grid[Math.floor(k/N)][k%N] = null);
@@ -252,32 +279,41 @@ function startDrag(ev, i) {
   const p = tray[i], s = cellSize(), h = Math.max(...p.cells.map(x => x[0])) + 1, w = Math.max(...p.cells.map(x => x[1])) + 1;
   ghost.innerHTML = ""; ghost.style.gridTemplateColumns = "repeat(" + w + "," + s + "px)"; ghost.style.gridTemplateRows = "repeat(" + h + "," + s + "px)";
   p.cells.forEach(([r, c]) => { const e = document.createElement("div"); e.className = "pc"; e.style.gridRow = r+1; e.style.gridColumn = c+1; e.innerHTML = jellyHTML(p.color); ghost.appendChild(e); });
-  drag = { i, w, h, s, moved:false, x0:ev.clientX, y0:ev.clientY, target:null };
-  moveDrag(ev);
+  unlockAudio();
+  const br = cellEls[0].getBoundingClientRect();
+  drag = { i, w, h, s, moved:false, x0:ev.clientX, y0:ev.clientY, px:ev.clientX, py:ev.clientY, pt:ev.pointerType, bx:br.left, by:br.top, target:null, raf:0 };
   window.addEventListener("pointermove", moveDrag); window.addEventListener("pointerup", endDrag, { once:true }); window.addEventListener("pointercancel", endDrag, { once:true });
 }
 function moveDrag(ev) {
   if (!drag) return;
-  if (Math.hypot(ev.clientX - drag.x0, ev.clientY - drag.y0) > 8) drag.moved = true;
-  if (!drag.moved) return;
-  ghost.hidden = false;
-  const gw = drag.w * (drag.s + 3), gh = drag.h * (drag.s + 3), lift = ev.pointerType === "mouse" ? 0 : 70;
-  const left = ev.clientX - gw/2, top = ev.clientY - gh/2 - lift;
-  ghost.style.left = left + "px"; ghost.style.top = top + "px";
-  const b = cellEls[0].getBoundingClientRect(), step = drag.s + 3;
-  const c0 = Math.round((left - b.left) / step), r0 = Math.round((top - b.top) / step);
-  showPreview(drag.i, r0, c0); drag.target = [r0, c0];
+  drag.px = ev.clientX; drag.py = ev.clientY; drag.pt = ev.pointerType;
+  if (!drag.moved && Math.hypot(ev.clientX - drag.x0, ev.clientY - drag.y0) > 4) {
+    drag.moved = true; ghost.hidden = false; sfx("pickup", .6);
+    const src = trayEl.children[drag.i]; if (src) src.style.visibility = "hidden";
+  }
+  if (drag.moved && !drag.raf) drag.raf = requestAnimationFrame(frame);
+}
+// Ein Bild pro Bildschirm-Frame: Teil per GPU verschieben, Vorschau nur bei neuem Zielfeld.
+function frame() {
+  if (!drag) return; drag.raf = 0;
+  const gw = drag.w * (drag.s + 3) - 3, gh = drag.h * (drag.s + 3) - 3, lift = drag.pt === "mouse" ? 0 : 76;
+  const left = drag.px - gw/2, top = drag.py - gh/2 - lift;
+  ghost.style.transform = "translate3d(" + left + "px," + top + "px,0)";
+  const step = drag.s + 3, c0 = Math.round((left - drag.bx) / step), r0 = Math.round((top - drag.by) / step);
+  if (!drag.target || drag.target[0] !== r0 || drag.target[1] !== c0) { drag.target = [r0, c0]; showPreview(drag.i, r0, c0); }
 }
 function endDrag() {
   window.removeEventListener("pointermove", moveDrag); ghost.hidden = true;
-  if (!drag) return; const d = drag; drag = null;
-  if (!d.moved) { selected = selected === d.i ? -1 : d.i; render(); return; }
-  if (!(d.target && place(d.i, d.target[0], d.target[1]))) render();
+  if (!drag) return; const d = drag; drag = null; if (d.raf) cancelAnimationFrame(d.raf);
+  const src = trayEl.children[d.i]; if (src) src.style.visibility = "";
+  if (!d.moved) { selected = selected === d.i ? -1 : d.i; sfx("pickup", .5); render(); return; }
+  if (!(d.target && place(d.i, d.target[0], d.target[1]))) { sfx("invalid", .6); render(); }
 }
+let previewed = [];
 function showPreview(i, r0, c0) {
-  cellEls.forEach(e => e.classList.remove("ok","bad"));
+  previewed.forEach(e => e.classList.remove("ok","bad")); previewed = [];
   const p = tray[i]; if (!p) return; const ok = canPlace(p, r0, c0);
-  p.cells.forEach(([r, c]) => { const R = r0+r, C = c0+c; if (R >= 0 && R < N && C >= 0 && C < N) cellEls[R*N+C].classList.add(ok ? "ok" : "bad"); });
+  p.cells.forEach(([r, c]) => { const R = r0+r, C = c0+c; if (R >= 0 && R < N && C >= 0 && C < N) { const e = cellEls[R*N+C]; e.classList.add(ok ? "ok" : "bad"); previewed.push(e); } });
 }
 boardEl.addEventListener("click", ev => {
   if (selected < 0 || over) return;
@@ -288,6 +324,11 @@ boardEl.addEventListener("click", ev => {
   toast("✕");
 });
 
+function syncButtons() { $("soundBtn").textContent = soundOn ? "🔊" : "🔇"; $("musicBtn").classList.toggle("off", !musicOn); }
+$("soundBtn").addEventListener("click", () => { soundOn = !soundOn; store.set("gd-sound", soundOn); unlockAudio(); if (master) master.gain.value = soundOn ? 1 : 0; syncButtons(); });
+$("musicBtn").addEventListener("click", () => { musicOn = !musicOn; store.set("gd-music", musicOn); unlockAudio(); musicOn ? startMusic() : stopMusic(); syncButtons(); });
+syncButtons();
+
 // ---------- Ende & Teilen ----------
 function emoji(n) { return n === 0 ? "⬛" : n === 1 ? "🟦" : n === 2 ? "🟩" : n <= 4 ? "🟨" : "🟥"; }
 function shareText() {
@@ -297,7 +338,7 @@ function shareText() {
     "\n\n" + grid8 + "\n" + L.beat + "\nhttps://gridolu.com/daily";
 }
 function finish() {
-  over = true; save();
+  over = true; save(); sfx("gameover", .8); stopMusic();
   $("oTitle").textContent = store.get("gd-" + dayKey)?.replay ? L.done : L.over;
   $("oScore").textContent = score.toLocaleString();
   $("share").textContent = shareText(); $("shareBtn").textContent = "📤 " + L.share; $("copyBtn").textContent = "📋 " + L.copy;
